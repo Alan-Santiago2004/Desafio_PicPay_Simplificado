@@ -1,5 +1,6 @@
 package com.projetoPicPaySimplificado.domain.users;
 
+import com.projetoPicPaySimplificado.dtos.UserDto;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -34,6 +35,16 @@ public class User {
         this.password = password;
         this.balance = balance;
         this.typeUser = typeUser;
+    }
+
+    public User(UserDto data){
+        this.firstName = data.firstName();
+        this.lastName = data.lastName();
+        this.document = data.document();
+        this.email = data.email();
+        this.password = data.password();
+        this.balance = data.balance();
+        this.typeUser = data.typeUser();
     }
 
     public Long getId() {
