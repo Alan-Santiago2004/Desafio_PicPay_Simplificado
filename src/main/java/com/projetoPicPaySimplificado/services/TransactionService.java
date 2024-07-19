@@ -33,25 +33,15 @@ public class TransactionService {
         User sender = userService.findUserById(transaction.senderId());
         User receiver = userService.findUserById(transaction.receiverId());
 
+        //validate transaction
         userService.validateTransaction(sender,transaction.value());
+        this.authorizeTransaction(sender,transaction.value());
 
-        boolean isAuthorized = this.authorizeTransaction(sender,transaction.value());
-        if(!isAuthorized){
-            throw new Exception("Transação não autorizada");
-        }
-
+        //set transaction
         Transaction newTransaction = new Transaction();
-        newTransaction.setAmount(transaction.value());
-        newTransaction.setSender(sender);
-        newTransaction.setReceiver(receiver);
-        newTransaction.setTimestamp(LocalDateTime.now());
-
+        this.transactionBody(transaction,newTransaction,sender,receiver);
         sender.setBalance(sender.getBalance().subtract(transaction.value()));
         receiver.setBalance(receiver.getBalance().add(transaction.value()));
-
-        this.transactionRepository.save(newTransaction);
-        this.userService.saveUser(sender);
-        this.userService.saveUser(receiver);
 
         this.notificationService.sendNotification(sender,"transação aprovada com sucesso");
         this.notificationService.sendNotification(receiver,"transação recebida com sucesso");
@@ -59,15 +49,30 @@ public class TransactionService {
         return newTransaction;
     }
 
-    public boolean authorizeTransaction(User sender, BigDecimal value){
+    public boolean authorizeTransaction(User sender, BigDecimal value) throws Exception {
+        boolean isAuthorized;
         ResponseEntity<AuthorizationResponse> response = restTemplate.getForEntity("https://util.devi.tools/api/v2/authorize", AuthorizationResponse.class);
         if (response.getStatusCode() == HttpStatus.OK) {
             AuthorizationResponse authorizationResponse = response.getBody();
             if (authorizationResponse != null && authorizationResponse.getStatus().equals("success") && authorizationResponse.getData() != null && authorizationResponse.getData().isAuthorization()) {
-                return true;
+                isAuthorized = true;
             }
         }
-        return false;
+        isAuthorized = false;
+        if(!isAuthorized){
+            throw new Exception("Transação não autorizada");
+        }
+        return isAuthorized;
+    }
+
+    public void transactionBody(TransactionDto transactionDto,Transaction newTransaction,User sender,User receiver){
+        newTransaction.setAmount(transactionDto.value());
+        newTransaction.setSender(sender);
+        newTransaction.setReceiver(receiver);
+        newTransaction.setTimestamp(LocalDateTime.now());
+        this.transactionRepository.save(newTransaction);
+        this.userService.saveUser(sender);
+        this.userService.saveUser(receiver);
     }
 
     public List<Transaction> getAllTransactions(){
