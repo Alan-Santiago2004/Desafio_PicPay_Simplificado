@@ -43,6 +43,11 @@ public class TransactionService {
         sender.setBalance(sender.getBalance().subtract(transaction.value()));
         receiver.setBalance(receiver.getBalance().add(transaction.value()));
 
+        //save transaction
+        this.transactionRepository.save(newTransaction);
+        this.userService.saveUser(sender);
+        this.userService.saveUser(receiver);
+
         this.notificationService.sendNotification(sender,"transação aprovada com sucesso");
         this.notificationService.sendNotification(receiver,"transação recebida com sucesso");
 
@@ -50,7 +55,7 @@ public class TransactionService {
     }
 
     public boolean authorizeTransaction(User sender, BigDecimal value) throws Exception {
-        boolean isAuthorized;
+        boolean isAuthorized = false;
         ResponseEntity<AuthorizationResponse> response = restTemplate.getForEntity("https://util.devi.tools/api/v2/authorize", AuthorizationResponse.class);
         if (response.getStatusCode() == HttpStatus.OK) {
             AuthorizationResponse authorizationResponse = response.getBody();
@@ -58,7 +63,6 @@ public class TransactionService {
                 isAuthorized = true;
             }
         }
-        isAuthorized = false;
         if(!isAuthorized){
             throw new Exception("Transação não autorizada");
         }
@@ -70,9 +74,6 @@ public class TransactionService {
         newTransaction.setSender(sender);
         newTransaction.setReceiver(receiver);
         newTransaction.setTimestamp(LocalDateTime.now());
-        this.transactionRepository.save(newTransaction);
-        this.userService.saveUser(sender);
-        this.userService.saveUser(receiver);
     }
 
     public List<Transaction> getAllTransactions(){
